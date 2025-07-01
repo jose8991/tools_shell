@@ -1,0 +1,96 @@
+#!/bin/bash
+
+# --- Script de Automatización: Instalación de Docker y Docker Compose en Ubuntu ---
+# Este script automatiza la instalación de Docker Engine, Docker CLI y Docker Compose
+# en sistemas Ubuntu, siguiendo las mejores prácticas y el repositorio oficial de Docker.
+# También añade el usuario actual al grupo 'docker' para ejecutar comandos sin sudo.
+
+echo "Iniciando la instalación de Docker y Docker Compose en Ubuntu..."
+
+# Paso 1: Actualizar el sistema e instalar dependencias
+echo "1/8: Actualizando el sistema e instalando dependencias necesarias..."
+sudo apt update
+sudo apt install -y ca-certificates curl gnupg lsb-release
+
+# Verificar si los paquetes se instalaron correctamente
+if [ $? -ne 0 ]; then
+    echo "Error: No se pudieron instalar las dependencias. Saliendo."
+    exit 1
+fi
+
+# Paso 2: Añadir la clave GPG oficial de Docker
+echo "2/8: Añadiendo la clave GPG oficial de Docker..."
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+if [ $? -ne 0 ]; then
+    echo "Error: No se pudo añadir la clave GPG de Docker. Saliendo."
+    exit 1
+fi
+
+# Paso 3: Añadir el repositorio de Docker a las fuentes de APT
+echo "3/8: Añadiendo el repositorio de Docker a las fuentes de APT..."
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+if [ $? -ne 0 ]; then
+    echo "Error: No se pudo añadir el repositorio de Docker. Saliendo."
+    exit 1
+fi
+
+# Paso 4: Actualizar los índices de paquetes nuevamente
+echo "4/8: Actualizando los índices de paquetes con el nuevo repositorio..."
+sudo apt update
+
+if [ $? -ne 0 ]; then
+    echo "Error: No se pudieron actualizar los índices de paquetes. Saliendo."
+    exit 1
+fi
+
+# Paso 5: Instalar Docker Engine, CLI y Docker Compose (como plugin)
+echo "5/8: Instalando Docker Engine, Docker CLI y Docker Compose..."
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+if [ $? -ne 0 ]; then
+    echo "Error: No se pudo instalar Docker y sus componentes. Saliendo."
+    exit 1
+fi
+
+# Paso 6: Verificar la instalación de Docker
+echo "6/8: Verificando la instalación de Docker..."
+sudo docker run hello-world
+if [ $? -eq 0 ]; then
+    echo "Docker se instaló y está funcionando correctamente."
+else
+    echo "Advertencia: La verificación de Docker (hello-world) falló. Revisa la instalación manualmente."
+fi
+
+# Paso 7: Añadir el usuario actual al grupo 'docker'
+# Esto permite ejecutar comandos de Docker sin 'sudo'.
+# Es necesario cerrar y volver a iniciar sesión para que los cambios surtan efecto.
+echo "7/8: Añadiendo el usuario '$USER' al grupo 'docker'..."
+sudo usermod -aG docker "$USER"
+
+if [ $? -eq 0 ]; then
+    echo "El usuario '$USER' ha sido añadido al grupo 'docker'."
+    echo "¡IMPORTANTE! Debes CERRAR Y VOLVER A INICIAR TU SESIÓN (o reiniciar el terminal) "
+    echo "para que los cambios de permisos surtan efecto y puedas ejecutar 'docker' sin 'sudo'."
+else
+    echo "Advertencia: No se pudo añadir el usuario '$USER' al grupo 'docker'. "
+    echo "Es posible que necesites hacerlo manualmente: 'sudo usermod -aG docker $USER'"
+fi
+
+# Paso 8: Verificar la instalación de Docker Compose
+echo "8/8: Verificando la instalación de Docker Compose..."
+docker compose version
+if [ $? -eq 0 ]; then
+    echo "Docker Compose se instaló correctamente."
+else
+    echo "Advertencia: La verificación de Docker Compose falló. Revisa la instalación manualmente."
+fi
+
+echo "--- Instalación de Docker y Docker Compose completada. ---"
+echo "Recuerda cerrar y volver a iniciar tu sesión para usar Docker sin 'sudo'."
